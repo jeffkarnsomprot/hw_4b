@@ -1,0 +1,93 @@
+---
+title: "ROC#4_2"
+output: html_document
+date: "2025-03-03"
+---
+
+
+```{r, echo=TRUE, warning=FALSE, error=FALSE, message=FALSE}
+
+if (!require("dplyr")) {install.packages("dplyr"); require("dplyr")}
+if (!require("Seurat")) {install.packages("Seurat"); require("Seurat")}
+if (!require("patchwork")) {install.packages("patchwork"); require("patchwork")}
+if (!require("cowplot")) {install.packages("cowplot"); require("cowplot")}
+if (!require("ggpubr")) {install.packages("ggpubr"); require("ggpubr")}
+if (!require("plotly")) {install.packages("plotly"); require("plotly")}
+if (!require("knitr")) {install.packages("knitr"); require("knitr")}
+if (!require("htmlwidgets")) {install.packages("htmlwidgets"); require("htmlwidgets")}
+if (!require("here")) {install.packages("here"); require("here")}
+if (!require("EnhancedVolcano")) {BiocManager::install('EnhancedVolcano'); require("EnhancedVolcano")} # volcano plot
+if (!require("tidyverse")) {install.packages("tidyverse"); require("tidyverse")} # for titying up data
+if (!require("RColorBrewer")) {install.packages("RColorBrewer"); require("RColorBrewer")} # for color brewer
+if (!require("sctransform")) {install.packages("sctransform"); require("sctransform")} # for data normalization
+if (!require("glmGamPoi")) {BiocManager::install('glmGamPoi'); require("glmGamPoi")} # for data normalization, sctransform
+if (!require("openxlsx")) {install.packages("openxlsx"); require("openxlsx")} # to save .xlsx files
+if (!require("SoupX")) {install.packages("SoupX"); require("SoupX")}
+if (!require("DoubletFinder")) {BiocManager::install('DoubletFinder'); require("DoubletFinder")}
+
+set.seed((12345))
+here()
+
+```
+
+s
+```{r, echo=TRUE, warning=FALSE, error=FALSE, message=FALSE, fig.align = 'center'}
+
+
+Dataset <- LoadSeuratRds("Dataset2.rds")
+Singlets <- LoadSeuratRds("Singlets.rds")
+
+Doublets <- LoadSeuratRds("Doublets.rds")
+
+```
+
+I think I need to find a way to make the rownames barcodes so they can match up with barcodes of other objects so make both Dataset and Singlets barcodes
+
+# Exporting metadata from a Seurat object
+
+Using this code, the rownames become the barcodes, which is exactly where they need to be in order to be matched up with barcodes of another object.
+
+```{r echo=TRUE, warning=FALSE, error=FALSE, message=FALSE, fig.align = 'center', class.source = "fold-show"}
+
+metadata <- Singlets@meta.data
+
+metadata
+
+Dataset <- AddMetaData(Singlets, metadata)
+
+head(Dataset@meta.data)
+tail(Dataset@meta.data)
+
+
+# Step 1: Extract existing metadata from Singlets (if needed)
+existing_metadata <- Singlets@meta.data
+
+# Step 2: Create new metadata (ensure row names match cell barcodes)
+new_metadata <- data.frame(
+  Condition = c("Treated", "Control", "Treated", "Control"),
+  row.names = colnames(Singlets)[1:4] # Example matching first 4 cells
+)
+
+# Step 3: Add new metadata using AddMetaData()
+Singlets <- AddMetaData(object = Singlets, metadata = new_metadata)
+
+# Step 4: Verify updated metadata
+head(Singlets@meta.data)
+
+
+#I feel like im getting nowhere and I think my biggest problem has to do with combining meta data and the order of meta data. 
+
+```
+
+```{r echo=TRUE, warning=FALSE, error=FALSE, message=FALSE, fig.align = 'center', class.source = "fold-show"}
+
+
+
+#I think this takes the metadata from Singlets and puts it in together with Dataset???
+# I can check this by checking head and tail
+
+
+
+```
+
+
