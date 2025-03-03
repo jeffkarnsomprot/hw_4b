@@ -1,3 +1,11 @@
+
+# Jeff's edits
+## r objects
+*.rds
+
+## cellrangerobjects
+*.h5
+
 # History files
 .Rhistory
 .Rapp.history
