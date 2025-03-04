@@ -1,0 +1,318 @@
+---
+title: "ROC#4_2"
+output: html_document
+date: "2025-03-03"
+---
+
+
+```{r, echo=TRUE, warning=FALSE, error=FALSE, message=FALSE}
+
+if (!require("dplyr")) {install.packages("dplyr"); require("dplyr")}
+if (!require("Seurat")) {install.packages("Seurat"); require("Seurat")}
+if (!require("patchwork")) {install.packages("patchwork"); require("patchwork")}
+if (!require("cowplot")) {install.packages("cowplot"); require("cowplot")}
+if (!require("ggpubr")) {install.packages("ggpubr"); require("ggpubr")}
+if (!require("plotly")) {install.packages("plotly"); require("plotly")}
+if (!require("knitr")) {install.packages("knitr"); require("knitr")}
+if (!require("htmlwidgets")) {install.packages("htmlwidgets"); require("htmlwidgets")}
+if (!require("here")) {install.packages("here"); require("here")}
+if (!require("EnhancedVolcano")) {BiocManager::install('EnhancedVolcano'); require("EnhancedVolcano")} # volcano plot
+if (!require("tidyverse")) {install.packages("tidyverse"); require("tidyverse")} # for titying up data
+if (!require("RColorBrewer")) {install.packages("RColorBrewer"); require("RColorBrewer")} # for color brewer
+if (!require("sctransform")) {install.packages("sctransform"); require("sctransform")} # for data normalization
+if (!require("glmGamPoi")) {BiocManager::install('glmGamPoi'); require("glmGamPoi")} # for data normalization, sctransform
+if (!require("openxlsx")) {install.packages("openxlsx"); require("openxlsx")} # to save .xlsx files
+if (!require("SoupX")) {install.packages("SoupX"); require("SoupX")}
+if (!require("DoubletFinder")) {BiocManager::install('DoubletFinder'); require("DoubletFinder")}
+
+set.seed((12345))
+here()
+
+```
+
+s
+```{r, echo=TRUE, warning=FALSE, error=FALSE, message=FALSE, fig.align = 'center'}
+
+
+Dataset <- LoadSeuratRds("Dataset2.rds")
+Singlets <- LoadSeuratRds("Singlets.rds")
+
+Doublets <- LoadSeuratRds("Doublets.rds")
+
+```
+
+
+
+
+I think I need to find a way to make the rownames barcodes so they can match up with barcodes of other objects so make both Dataset and Singlets barcodes
+
+
+March 3th. 
+
+I had some help regarding this problem and was able to merge everything and give it its own unique variable name
+
+New approach to this is to explain every code and what it is doing + why to further understand coding and my process.
+
+```{r, echo=TRUE, warning=FALSE, error=FALSE, message=FALSE}
+
+# I believe I need to analyze the Datasets again and Identify each cluster into more depth so higher resolution is needed. 
+
+# Im going to start by superclustering Singlets dataset to see what we have.
+
+Singlets <- FindNeighbors(Singlets, dims = 1:15)
+Singlets <- FindClusters(Singlets, resolution = 2)
+
+Singlets <- RunUMAP(Singlets, dims = 1:15)
+
+DimPlot(Singlets, reduction = "umap")
+
+Doublets <- FindNeighbors(Doublets, dims = 1:15)
+Doublets <- FindClusters(Doublets, resolution = 2)
+
+Doublets <- RunUMAP(Doublets, dims = 1:15)
+
+DimPlot(Doublets, reduction = "umap")
+
+# Now that I have both of their clusters I need to rename them at 2 levels. 
+# For Identification Im going to use the Pipeline for Multidimensional Plot
+```
+
+```{r, echo=TRUE, warning=FALSE, error=FALSE, message=FALSE}
+
+DimPlot(Singlets, reduction = "umap") + ggtitle("Singlets") + theme(plot.title = element_text(hjust = 0.5))
+
+markers.to.plot1 <- c("Lrp2",         # PT
+                      "Slc5a12",     # PT-S1
+                      "Slc13a3",     # PT-S2
+                      "Slc16a9",     # PT-S3
+                      "Havcr1",      # Injured PT
+                      "Epha7",       # dTL
+                      "Slc12a1",     # TAL
+                      "Cldn10",      # TAL
+                      "Cldn16",      # TAL
+                      "Nos1",        # MD
+                      "Slc12a3",     # DCT
+                      "Pvalb",       # DCT1
+                      "Slc8a1",      # DCT2, CNT
+                      "Aqp2",        # PC
+                      "Slc4a1",      # IC-A
+                      "Slc26a4",     # IC-B
+                      "Upk1b",       # Uro
+                      "Ncam1",       # PEC
+                      "Pdgfrb",      # Perivascular
+                      "Piezo2",      # Mesangial
+                      "Pdgfra",      # Fib
+                      "Acta2",       # Mural
+                      "Nphs1",       # Podo
+                      "Kdr",         # Capillary Endo
+                      "Lyve1",       # Lymph
+                      "Ptprc",       # Immune
+                      "Cd74",        # Macrophage
+                      "Skap1"        # B/T Cells
+)
+
+DotPlot(Singlets,
+        features = markers.to.plot1,
+        dot.scale = 8,
+        dot.min = 0,
+        scale.max = 100,
+        scale.min = 0,
+        col.min = -2.5,
+        col.max = 2.5)+
+  coord_flip()
+
+```
+```{r, echo=TRUE, warning=FALSE, error=FALSE, message=FALSE}
+
+Singlets@meta.data <- Singlets@meta.data %>% mutate(subclass = dplyr::case_when(
+  seurat_clusters == 0 ~ "PTS2",
+  seurat_clusters == 1 ~ "PTS1",
+  seurat_clusters == 2 ~ "TAL",
+  seurat_clusters == 3 ~ "PTS3",
+  seurat_clusters == 4 ~ "EC",
+  seurat_clusters == 5 ~ "EC/Mes",
+  seurat_clusters == 6 ~ "PTS2a",
+  seurat_clusters == 7 ~ "PTS2b",
+  seurat_clusters == 8 ~ "DCT",
+  seurat_clusters == 9 ~ "PTS2c",
+  seurat_clusters == 10 ~ "PTS1a", # check this
+  seurat_clusters == 11 ~ "DCTa",
+  seurat_clusters == 12 ~ "FIB/PERI",
+  seurat_clusters == 13 ~ "DTL",
+  seurat_clusters == 14 ~ "TALa",
+  seurat_clusters == 15 ~ "PTS1",
+  seurat_clusters == 16 ~ "PC",
+  seurat_clusters == 17 ~ "PCa",
+  seurat_clusters == 18 ~ "PTS2d",
+  seurat_clusters == 19 ~ "PT",
+  seurat_clusters == 20 ~ "ICA",
+  seurat_clusters == 21 ~ "DTLa",
+  seurat_clusters == 22 ~ "ICB",
+  seurat_clusters == 23 ~ "DCTb",
+  seurat_clusters == 24 ~ "macrophage/immune",
+  seurat_clusters == 25 ~ "PERI",
+  seurat_clusters == 26 ~ "URO",
+  seurat_clusters == 27 ~ "PODO",
+  seurat_clusters == 28 ~ "PTS3a",
+  seurat_clusters == 29 ~ "PC",
+
+))
+
+Idents(Singlets) <- Singlets@meta.data$subclass
+DimPlot(Singlets, reduction = "umap", label = T)
+VlnPlot(Singlets, "nFeature_RNA")
+
+
+Singlets@meta.data <- Singlets@meta.data %>% mutate(class = dplyr::case_when(
+  seurat_clusters == 0 ~ "PT",
+  seurat_clusters == 1 ~ "PT",
+  seurat_clusters == 2 ~ "TAL",
+  seurat_clusters == 3 ~ "PT",
+  seurat_clusters == 4 ~ "EC",
+  seurat_clusters == 5 ~ "EC",
+  seurat_clusters == 6 ~ "PT",
+  seurat_clusters == 7 ~ "PT",
+  seurat_clusters == 8 ~ "DCT",
+  seurat_clusters == 9 ~ "PT",
+  seurat_clusters == 10 ~ "PT", # check this
+  seurat_clusters == 11 ~ "DCT",
+  seurat_clusters == 12 ~ "FIB/PERI",
+  seurat_clusters == 13 ~ "DTL",
+  seurat_clusters == 14 ~ "TAL",
+  seurat_clusters == 15 ~ "PT",
+  seurat_clusters == 16 ~ "PC",
+  seurat_clusters == 17 ~ "PC",
+  seurat_clusters == 18 ~ "PT",
+  seurat_clusters == 19 ~ "PT",
+  seurat_clusters == 20 ~ "IC",
+  seurat_clusters == 21 ~ "DTL",
+  seurat_clusters == 22 ~ "IC",
+  seurat_clusters == 23 ~ "DCT",
+  seurat_clusters == 24 ~ "macrophage/immune",
+  seurat_clusters == 25 ~ "FIB/PERI",
+  seurat_clusters == 26 ~ "URO",
+  seurat_clusters == 27 ~ "PODO",
+  seurat_clusters == 28 ~ "PT",
+  seurat_clusters == 29 ~ "PC",
+
+))
+
+Idents(Singlets) <- Singlets@meta.data$class
+DimPlot(Singlets, reduction = "umap", label = T)
+VlnPlot(Singlets, "nFeature_RNA")
+
+```
+
+
+```{r}
+
+
+DimPlot(Singlets, reduction = "umap", label = T)
+DimPlot(Doublets, reduction = "umap", label = T)
+DimPlot(Dataset, reduction = "umap", label = T)
+
+# I have 3 different seurat object, I've played around and tried a lot but my problem is merging the metadata. 
+
+# Not sure why Dataset, Became the same thing as my Singlets Data
+```
+
+
+```{r, echo=TRUE, warning=FALSE, error=FALSE, message=FALSE}
+
+
+# this command turns the meta.data of object = Singlets into a dataframe. 
+# Doing this will help me merge my two Datasets. 
+metadata1 <- Singlets@meta.data
+metadata1
+metadata2 <- Dataset@meta.data
+metadata2
+
+# To view things with a venn , Data must be a list of values instead of a dataframe so you have to take the identification of each row which are genes are turn it into a list of names
+
+list_1 <- rownames(metadata1)
+list_2 <- rownames(metadata2)
+#creats an object named venn with ggvenn naming them meta1 and meta 2 for both lists
+venn <- ggvenn(list(meta1 = list_1, meta2 = list_2))
+venn
+
+
+
+
+lst <- list(list_1,list_2)
+item_list <- venn(lst, show.plot = TRUE)
+test <- attributes(item_list)$intersections
+test$A
+
+
+df2 <- test$B
+df2 <- as.data.frame(df2)
+df2$unique <- "unique2"
+df3 <- df2 %>% column_to_rownames(var = "df2")
+datasetb <- AddMetaData(Dataset, df3) 
+
+# df4 = dataframe of R Pipeline uniqueness
+df4 <- test$A
+# as.data.frame turns it back into a dataframe instead of a value list.
+df4 <- as.data.frame(df4)
+
+# creates a new metadata column called unique and puts "unique" for all columns. 
+df4$unique <- "unique" 
+df5 <- df4 %>% column_to_rownames(var = "df4")
+
+# Check overlap between row names of df5 and column names of Dataset
+overlap <- intersect(rownames(df5), colnames(Dataset))
+
+# Print the overlapping names
+print(overlap)
+
+# Count the number of overlapping entries
+cat("Number of overlapping entries:", length(overlap), "\n")
+
+# 0 overlapping entries , why??
+
+
+# d5 now has the genes listed as the rownames so it is ready to be merged
+singletb <- AddMetaData(Singlets, df5) 
+#NO cell overlap between new meta data and seurat Object. Works with Singlet Dataset not "Dataset"
+# this now merged the word unique to the metadata of Singlets, I now want to add to different codes 
+
+# unique = unique on new Pipeline side
+# unique2 = unique on manual side.
+# same = both R and I were on the same page :)
+#df2,df3 = Dataset testa , datasetb
+#df4,df5 = Singlet testb , singletb
+#df6,df7 = BOTH testab , same_gene
+
+df6 <- test$`A:B`
+df6 <- as.data.frame(df6)
+df6$unique <- "same"
+df7 <- df6 %>% column_to_rownames(var = "df6")
+same_gene <- AddMetaData(Dataset, df7) 
+
+# ask AI
+colnames(Dataset)
+colnames(datasetb@meta.data)[colnames(datasetb@meta.data) == "subclass.l2"] <- "subclass"
+
+head(same_gene@meta.data)
+head(singletb@meta.data)
+head(datasetb@meta.data)
+#these 3 are all seurat objects 
+DimPlot(singletb, reduction = "umap",group.by = "class", split.by = "unique")
+DimPlot(same_gene, reduction = "umap",group.by = "class", split.by = "unique")
+DimPlot(datasetb, reduction = "umap", group.by = "class", split.by = "unique")
+
+rm(df2,df3,df4,df5,df6,df7)
+
+
+#datasetb has a metadata column called subclass.l2 I need to change it to just subclass
+# d5 now has the genes listed as the rownames so it is ready to be merged 
+
+
+
+```
+
+March 3 7:05pm
+
+Taking a break now, From the venn diagram and test chart I gave each section (3) a metadata column called unique based on if they're the same unique on my side or unique from the Soupx side.
+
+I need to find a way to bring it all together and view it well.
