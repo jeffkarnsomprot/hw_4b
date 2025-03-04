@@ -24,6 +24,9 @@ if (!require("glmGamPoi")) {BiocManager::install('glmGamPoi'); require("glmGamPo
 if (!require("openxlsx")) {install.packages("openxlsx"); require("openxlsx")} # to save .xlsx files
 if (!require("SoupX")) {install.packages("SoupX"); require("SoupX")}
 if (!require("DoubletFinder")) {BiocManager::install('DoubletFinder'); require("DoubletFinder")}
+library(plotly)
+library(ggvenn)
+library(gplots)
 
 set.seed((12345))
 here()
@@ -279,6 +282,7 @@ singletb <- AddMetaData(Singlets, df5)
 # unique = unique on new Pipeline side
 # unique2 = unique on manual side.
 # same = both R and I were on the same page :)
+
 #df2,df3 = Dataset testa , datasetb
 #df4,df5 = Singlet testb , singletb
 #df6,df7 = BOTH testab , same_gene
@@ -316,3 +320,40 @@ March 3 7:05pm
 Taking a break now, From the venn diagram and test chart I gave each section (3) a metadata column called unique based on if they're the same unique on my side or unique from the Soupx side.
 
 I need to find a way to bring it all together and view it well.
+```{r}
+
+# Rename metadata column in datasetb
+colnames(datasetb@meta.data)[colnames(datasetb@meta.data) == "subclass.l2"] <- "subclass"
+
+# Merge Seurat objects
+merged_obj <- merge(
+  x = singletb,
+  y = list(same_gene, datasetb),
+  add.cell.ids = c("Singlet", "SameGene", "DatasetB")
+)
+
+# Verify merged object
+print(merged_obj)
+head(merged_obj@meta.data)
+
+mem.maxVSize(56000)
+
+# Perform normalization and visualization
+merged_obj <- NormalizeData(merged_obj, normalization.method = "LogNormalize", scale.factor = 10000)
+merged_obj <- FindVariableFeatures(merged_obj, selection.method = "vst", nfeatures = 2000)
+merged_obj.genes <- rownames(merged_obj)
+merged_obj <- ScaleData(merged_obj, features = merged_obj.genes)
+merged_obj <- RunPCA(merged_obj, features = VariableFeatures(object = merged_obj))
+merged_obj <- FindNeighbors(merged_obj, dims = 1:15)
+merged_obj <- FindClusters(merged_obj, resolution = 0.1)
+merged_obj <- RunUMAP(merged_obj, dims = 1:15)
+
+DimPlot(merged_obj, reduction = "umap", group.by = "class", split.by = "unique")
+DimPlot(merged_obj, reduction = "umap", group.by = "unique", split.by = "unique")
+library(plotly)
+
+dim_plot <- DimPlot(merged_obj, reduction = "umap", group.by = "class", split.by = "unique") +
+  ggtitle("UMAP Dimensional Reduction")
+interactive_plot <- ggplotly(dim_plot)
+interactive_plot
+```
