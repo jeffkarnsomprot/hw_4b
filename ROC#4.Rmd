@@ -60,7 +60,7 @@ a.	Bonus points if you write the code to do it based on cell-type names and not 
 Saved RDS file of HW #3 as Dataset2 onto the Week 3 test folder
 
 # Question 2 
-
+3
 
 ## Run SoupX and Doublet Detector
 
